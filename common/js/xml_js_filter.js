@@ -76,13 +76,12 @@
 			// hook form submit event
 			$('form')
 				.each(function(){
-					console.debug('form', this.action, window.XE.isSameHost(this.action))
 					if (this.onsubmit) {
 						this['xe:onsubmit'] = this.onsubmit;
 						this.onsubmit = null;
 					}
 
-					if(window.XE.isSameHost(this.action))
+					if(csrf_token && window.XE.isSameHost(this.action))
 					{
 						$(this).prepend('<input type="hidden" name="_token" value="' + csrf_token + '" />');
 					}
