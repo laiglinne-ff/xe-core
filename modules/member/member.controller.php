@@ -766,6 +766,11 @@ class memberController extends member
 		$max_width = $config->profile_image_max_width;
 		$max_height = $config->profile_image_max_height;
 		$max_filesize = $config->profile_image_max_filesize;
+		foreach($config->signupForm as $val)
+		{
+			if($val->name == "profile_image")
+				$allow_transparent = $val->allow_transparent_thumbnail == 'Y';
+		}
 
 		Context::loadLang(_XE_PATH_ . 'modules/file/lang');
 
@@ -789,7 +794,7 @@ class memberController extends member
 		if(($width > $max_width || $height > $max_height ) && $type != 1)
 		{
 			$temp_filename = sprintf('files/cache/tmp/profile_image_%d.%s', $member_srl, $ext);
-			FileHandler::createImageFile($target_file, $temp_filename, $max_width, $max_height, $ext);
+			FileHandler::createImageFile($target_file, $temp_filename, $max_width, $max_height, $ext, 'crop', $allow_transparent);
 
 			// 파일 용량 제한
 			FileHandler::clearStatCache($temp_filename);
@@ -1612,7 +1617,6 @@ class memberController extends member
 		if(!$args->editor_skin) $args->editor_skin= "ckeditor";
 		if(!$args->editor_colorset) $args->editor_colorset = "moono";
 		if($args->enable_join!='Y') $args->enable_join = 'N';
-		$args->enable_openid= 'N';
 		if($args->profile_image !='Y') $args->profile_image = 'N';
 		if($args->image_name!='Y') $args->image_name = 'N';
 		if($args->image_mark!='Y') $args->image_mark = 'N';

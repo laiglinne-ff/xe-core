@@ -1,8 +1,6 @@
 (function($){
 	"use strict";
 
-	var selectable;
-
 	$.widget('xe.fileUploader', $.blueimp.fileupload, {
 		options: {
 			loadedFileList: function(e,d) {dd('loadedFileList', e, d);},
@@ -32,9 +30,10 @@
 
 				// 파일 목록
 				controll: '.xefu-controll',
-				fileList: '.xefu-list-container',
+				fileListContainer: '.xefu-list-container',
 				filelistOther: '.xefu-list-other ul',
 				filelistImages: '.xefu-list-images ul',
+				fileItem: '.xefu-file',
 
 				// progressbar
 				progressbar: '.xefu-progressbar',
@@ -55,6 +54,8 @@
 				actInsertFile : '.xefu-act-insert-file',
 				actDeleteFile : '.xefu-act-delete',
 				actSetCover : '.xefu-act-set-cover',
+				actSelect : '.xefu-act-select',
+				actUnselect : '.xefu-act-unselect',
 
 				// 상태
 				statusCount: '.xefu-status-count',
@@ -73,7 +74,13 @@
 				filter: "li",
 				tolerance: "touch",
 				toggle: false,
-				debug: true
+				debug: true,
+				selected: function(e, targets) {
+					dd('event selected', targets)
+				},
+				unselected: function(e, targets) {
+					dd('event unselected', targets)
+				}
 			},
 			/**
 			 * $.blueimp.fileupload.add()
@@ -106,16 +113,18 @@
 			/**
 			 * $.blueimp.fileupload.done()
 			 */
-			done: function() {
-				dd('_super.options.done()', arguments)
+			done: function(e, data) {
+				var $this = $(this);
+				var that = $this.data('xe-fileUploader');
+				var result = JSON.parse(data.result);
+				that.latestFiles.push(result);
 			},
 			/**
 			 * $.blueimp.fileupload.stop()
 			 */
 			stop: function(e, res) {
-				dd('_super.options.stop()', res, this)
+				dd('_super.options.stop()', e, res, this)
 				var $this = $(this);
-
 				var that = $this.data('xe-fileUploader');
 
 				that._loadFiles();
@@ -123,6 +132,7 @@
 		},
 		booted: false,
 		files: [],
+		latestFiles: [],
 		selectMode: false,
 		isTouchDevice: false,
 		chunkedUpload: false,
@@ -130,7 +140,7 @@
 		 * create
 		 */
 		_create: function() {
-			_debug = this.options.debug;
+			_debug = true//this.options.debug;
 
 			this.options.sequentialUploads = true;
 			this.options.leftUploadLimit = this.options.limitTotalFileSize;
@@ -159,14 +169,24 @@
 
 			// selectable
 			this.options.configSelectable.toggle = this.isTouchDevice;
-			selectable = $.xe.selectable(this.options.configSelectable, $('.xefu-list-container'));
+			this.selectable = $.xe.selectable(this.options.configSelectable, $('.xefu-list-container'));
+			if(!Modernizr.touch) this.selectable.disable();
 
 			dd('_create()', this);
 		},
-		toggleSelectMode: function() {
-			dd('toggleSelectMode()');
+		toggleSelectable: function() {
+			dd('toggleSelectable()');
 			this.element.toggleClass('xefu-select-mode');
-			selectable.unselectAll();
+			this.selectable.unselectAll();
+		},
+		modeSelectable: function(selectable) {
+			if(!!selectable) {
+				this.element.addClass('xefu-select-mode');
+				this.selectable.enable();
+			} else {
+				this.element.removeClass('xefu-select-mode');
+				this.selectable.disable();
+			}
 		},
 		_init: function() {
 			dd('_init()')
@@ -176,7 +196,7 @@
 
 			this.element.find('.xefu-image-auto-attach').prop('checked', this.options.imageAutoAttach);
 
-			this.element.find('.xefu-image-auto-attach').on('change', function() {
+			this.element.on('change', '.xefu-image-auto-attach', function() {
 				var $el = $(this);
 				dd('auto-attach.change', $el.prop('checked'))
 				that.options.imageAutoAttach = $el.prop('checked');
@@ -202,6 +222,19 @@
 				that._insertToContent([file_srl]);
 			});
 
+			// 선택
+			this.element.on('click', this.options.classes.actSelect, function(e) {
+				that.element.addClass('xefu-select-mode');
+				that.modeSelectable(true);
+				that.selectable.select($(e.target).closest('.xefu-file'));
+			});
+
+			// 선택
+			this.element.on('click', this.options.classes.actUnselect, function(e) {
+				that.element.addClass('xefu-select-mode');
+				that.selectable.unselect($(e.target).closest('.xefu-file'));
+			});
+
 			// 파일 삭제
 			this.element.on('click', this.options.classes.actDeleteFile, function(e) {
 				e.preventDefault();
@@ -218,30 +251,30 @@
 				e.preventDefault();
 				e.stopPropagation();
 
-				that.toggleSelectMode();
+				that.toggleSelectable();
 			});
 
 			/* controll */
 			// 전체 파일 선택
 			this.element.on('click', this.options.classes.actSelectAll, function() {
-				selectable.selectAll();
+				that.selectable.selectAll();
 			});
 
 			// 선택해제
 			this.element.on('click', this.options.classes.actUnselectAll, function() {
-				selectable.unselectAll();
+				that.selectable.unselectAll();
 			});
 
 			// 이미지 전체 선택
 			this.element.on('click', this.options.classes.actSelectAllImages, function() {
-				selectable.select($('.xefu-file-image'));
+				that.selectable.select($('.xefu-file-image'));
 			});
 
 			// 선택 파일 삽입
 			this.element.on('click', this.options.classes.actSelectedInsertContent, function(e) {
 				e.preventDefault();
 
-				var selected = selectable.getSelected();
+				var selected = that.selectable.getSelected();
 				var file_srls = [];
 
 				dd('actSelectedInsertContent', selected);
@@ -254,12 +287,12 @@
 				dd('actSelectedInsertContent', file_srls);
 
 				that._insertToContent(file_srls);
-				selectable.unselectAll();
+				that.selectable.unselectAll();
 			});
 
 			// 선택 파일 삭제
 			this.element.on('click', this.options.classes.actSelectedDeleteFile, function(e) {
-				var selected = selectable.getSelectedNodes();
+				var selected = that.selectable.getSelectedNodes();
 				var file_srls = [];
 
 				e.preventDefault();
@@ -272,7 +305,7 @@
 				dd('actSelectedDeleteFilee', file_srls);
 
 				that._deleteFile(file_srls);
-				selectable.unselectAll();
+				that.selectable.unselectAll();
 			});
 
 			// 커버 이미지로 지정
@@ -301,8 +334,6 @@
 		},
 		/**
 		 * 파일 목록 그리기
-		 *
-		 * @param      {<type>}  data    The data
 		 */
 		_renderList: function(data) {
 			var that = this;
@@ -317,7 +348,7 @@
 			var files = [];
 
 			if(!data.files.length) {
-				this.element.find(options.classes.fileList).hide();
+				this.element.find(options.classes.fileListContainer).hide();
 				this.element.find(options.classes.controll).hide();
 				return;
 			}
@@ -339,7 +370,6 @@
 						result_image.push(template_fileitem_image(file));
 					}
 					new_images.push(file.file_srl);
-
 				}
 				else
 				{
@@ -350,17 +380,26 @@
 			$.each(that.files, function (index, file) {
 				if($.inArray(file.file_srl, files) !== -1) return;
 
-				var $list = $(that.options.classes.filelistImages);
+				var $list = $(that.options.classes.fileListContainer);
 				$list.find('[data-file-srl=' + file.file_srl + ']').remove();
 			});
 
 			this.element.find(options.classes.filelistImages).append(result_image.join(''))
 			this.element.find(options.classes.filelistOther).append(result.join(''))
-			this.element.find(options.classes.fileList).show();
+			this.element.find(options.classes.fileListContainer).show();
 			this.element.find(options.classes.controll).show();
-			// if(this.options.imageAutoAttach) this._insertToContent(new_images);
 
-			selectable.refresh();
+			// 이미지 자동 삽입
+			if(this.options.imageAutoAttach) {
+				$.each(that.latestFiles, function (index, file) {
+					if(that._isImage(file)) {
+						that._insertToContent(file);
+					}
+				});
+				that.latestFiles = [];
+			}
+
+			that.selectable.refresh();
 
 			this._updateStatus.call(this, data);
 		},
@@ -475,6 +514,9 @@
 			window.exec_json('file.procFileSetCoverImage', data, function(res) {
 				dd('_setCover(). file.procFileSetCoverImage', data, res);
 			});
+		},
+		_isImage: function(file) {
+			return /\.(jpe?g|png|gif)$/i.test(file.download_url)
 		}
 	});
 
