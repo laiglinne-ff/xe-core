@@ -301,7 +301,7 @@ class Context
 		{
 			if($_COOKIE['lang_type'] != $this->lang_type)
 			{
-				saveCookie('lang_type', $this->lang_type, false, $_SERVER['REQUEST_TIME'] + 3600 * 24 * 1000);
+				setcookie('lang_type', $this->lang_type, $_SERVER['REQUEST_TIME'] + 3600 * 24 * 1000);
 			}
 		}
 		elseif($_COOKIE['lang_type'])
@@ -342,24 +342,11 @@ class Context
 		}
 
 		if($sess = $_POST[session_name()]) session_id($sess);
-		if($this->db_info->disable_cookie_secure !== 'Y')
-		{
-			ini_set('session.cookie_httponly', true);
-			ini_set('session.cookie_secure', Context::getSslStatus() === 'always');
-		}
 		session_start();
 
 		// set authentication information in Context and session
 		if(self::isInstalled())
 		{
-			if($this->db_info->disable_csrf_token !== 'Y')
-			{
-				if(!$_SESSION['csrf_token'])
-				{
-					$_SESSION['csrf_token'] = Password::createSecureSalt(40);
-				}
-				$this->set('csrf_token', $_SESSION['csrf_token']);
-			}
 			$oModuleModel = getModel('module');
 			$oModuleModel->loadModuleExtends();
 
@@ -528,16 +515,6 @@ class Context
 
 		if(is_string($db_info->sitelock_whitelist)) {
 			$db_info->sitelock_whitelist = explode(',', $db_info->sitelock_whitelist);
-		}
-
-		if(!$db_info->disable_cookie_secure)
-		{
-			$db_info->disable_cookie_secure = 'Y';
-		}
-
-		if(!$db_info->disable_csrf_token)
-		{
-			$db_info->disable_csrf_token = 'Y';
 		}
 
 		$self->setDBInfo($db_info);
@@ -731,8 +708,8 @@ class Context
 					echo self::get('lang')->msg_invalid_request;
 					return false;
 				}
-
-				saveCookie(session_name(), $session_name, true);
+				
+				setcookie(session_name(), $session_name);
 
 				$url = preg_replace('/[\?\&]SSOID=.+$/', '', self::getRequestUrl());
 				header('location:' . $url);
@@ -741,7 +718,7 @@ class Context
 			}
 			else if(!self::get('SSOID') && $_COOKIE['sso'] != md5(self::getRequestUri()))
 			{
-				saveCookie('sso', md5(self::getRequestUri()), true);
+				setcookie('sso', md5(self::getRequestUri()));
 				$origin_url = self::getRequestUrl();
 				$origin_sig = Password::createSignature($origin_url);
 				$url = sprintf("%s?url=%s&sig=%s", $default_url, urlencode(base64_encode($origin_url)), urlencode($origin_sig));

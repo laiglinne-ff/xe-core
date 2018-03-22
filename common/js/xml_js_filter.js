@@ -71,7 +71,6 @@
 		},
 		API_ONREADY : function() {
 			var self = this;
-			var csrf_token = $('meta[name="csrf-token"]').attr('content');
 
 			// hook form submit event
 			$('form')
@@ -79,11 +78,6 @@
 					if (this.onsubmit) {
 						this['xe:onsubmit'] = this.onsubmit;
 						this.onsubmit = null;
-					}
-
-					if(csrf_token && window.XE.isSameHost(this.action))
-					{
-						$(this).prepend('<input type="hidden" name="_token" value="' + csrf_token + '" />');
 					}
 				})
 				.submit(function(e){
